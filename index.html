@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://cdnjs.cloudflare.com; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self' https://cdnjs.cloudflare.com; connect-src 'self'; img-src 'self' data:; worker-src 'self';">
+  <title>Analyse Meeting</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" integrity="sha512-BiJyIppQtdgQXl3k5ufADG7n2AFD+a83H8XTur2qxGn8pY/+bexdFv+DE5jBqFaUG2RglN6E466+vWXTjhBMWw==" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js" integrity="sha512-R8DmFumiQJ5AZt0pOEtpJR/YWZLxE+nobVhtSGcVwqDAVBBusZT6F4LmSpaV0t1Ik5+pUvNbK/CtYQgQki71oQ==" crossorigin="anonymous"></script>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg:#f4f4f6;
+      --card:#ffffff;
+      --primary:#0066cc;
+      --accent:#00a88c;
+      --border:#d9d9e3;
+      --text:#1f1f2f;
+      --muted:#6b6b7a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", "Helvetica Neue", sans-serif;
+      background: var(--bg);
+      margin: 0;
+      padding: 2rem;
+      color: var(--text);
+    }
+    h1 {
+      margin-top: 0;
+      font-size: 2rem;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(31,31,47,0.08);
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid var(--border);
+    }
+    .drop-zone {
+      border: 2px dashed var(--primary);
+      border-radius: 12px;
+      padding: 2.5rem;
+      text-align: center;
+      color: var(--muted);
+      transition: background 0.2s, color 0.2s, transform 0.2s;
+    }
+    .drop-zone.dragover {
+      background: rgba(0,102,204,0.08);
+      color: var(--primary);
+      transform: scale(1.01);
+    }
+    .drop-zone input {
+      display: none;
+    }
+    .drop-zone button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      margin-top: 1rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .drop-zone button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 30px rgba(0,102,204,0.25);
+    }
+    .options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    .option {
+      background: rgba(0,102,204,0.08);
+      border-radius: 10px;
+      padding: 1rem;
+      min-width: 180px;
+    }
+    label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 600;
+    }
+    input[type="number"] {
+      width: 80px;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(0, 102, 204, 0.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+    .spinner.visible { display: inline-block; }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    progress {
+      width: 240px;
+      height: 10px;
+      accent-color: var(--accent);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1.5rem;
+      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+    th {
+      background: rgba(0, 102, 204, 0.1);
+      color: var(--text);
+    }
+    tbody tr:nth-child(even) {
+      background: rgba(31,31,47,0.04);
+    }
+    .actions {
+      margin-top: 2rem;
+      display: flex;
+      gap: 1rem;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.85rem 1.75rem;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn-primary:disabled {
+      background: var(--border);
+      cursor: not-allowed;
+      box-shadow: none;
+      transform: none;
+    }
+    .btn-primary:not(:disabled):hover {
+      transform: translateY(-2px);
+      box-shadow: 0 18px 40px rgba(0,102,204,0.35);
+    }
+    .log {
+      background: #111827;
+      color: #f8f8f2;
+      padding: 1rem;
+      border-radius: 8px;
+      font-family: "Fira Code", monospace;
+      font-size: 0.8rem;
+      max-height: 240px;
+      overflow: auto;
+      white-space: pre-wrap;
+      display: none;
+    }
+    .log.visible { display: block; }
+    .chips {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    .chip {
+      background: rgba(0, 168, 140, 0.12);
+      color: var(--accent);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+    }
+    @media (max-width: 720px) {
+      body { padding: 1rem; }
+      .card { padding: 1.5rem; }
+      table { font-size: 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="card">
+      <h1>Analyse automatique de meetings</h1>
+      <p>Importez vos feuilles de résultats (Excel ou HTML) et générez un classeur consolidé en quelques secondes. L'application fonctionne entièrement dans votre navigateur après le premier chargement.</p>
+      <div class="chips" id="detectedSessions"></div>
+    </header>
+
+    <section class="card">
+      <div class="drop-zone" id="dropZone">
+        <p><strong>Glissez-déposez</strong> jusqu'à 10 fichiers (.xlsx, .xls, .html)</p>
+        <p>ou</p>
+        <button type="button" id="fileBtn">Choisir des fichiers</button>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.html" multiple>
+      </div>
+      <div class="options">
+        <div class="option">
+          <label><input type="checkbox" id="optBestAbsolus" checked> Best Absolus</label>
+          <small>Top N meilleurs temps toutes sessions.</small>
+        </div>
+        <div class="option">
+          <label><input type="checkbox" id="optJournal" checked> Journal</label>
+          <small>Trace des mappings et alertes.</small>
+        </div>
+        <div class="option">
+          <label for="topN">Top N</label>
+          <input type="number" id="topN" min="3" max="50" value="10">
+        </div>
+      </div>
+      <div class="status">
+        <div class="spinner" id="spinner"></div>
+        <progress id="progress" value="0" max="100"></progress>
+        <span id="stage">En attente de fichiers…</span>
+      </div>
+      <div class="actions">
+        <button class="btn-primary" id="exportBtn" disabled>Exporter vers Excel</button>
+        <button class="btn-primary" id="resetBtn" type="button">Réinitialiser</button>
+      </div>
+    </section>
+
+    <section class="card" id="previewCard" style="display:none;">
+      <h2>Aperçu (100 premières lignes)</h2>
+      <div class="table-wrapper">
+        <table id="previewTable"></table>
+      </div>
+    </section>
+
+    <section class="card" id="journalCard" style="display:none;">
+      <h2>Journal</h2>
+      <div class="log" id="log"></div>
+    </section>
+  </div>
+
+  <script>
+    const dropZone = document.getElementById('dropZone');
+    const fileBtn = document.getElementById('fileBtn');
+    const fileInput = document.getElementById('fileInput');
+    const spinner = document.getElementById('spinner');
+    const progress = document.getElementById('progress');
+    const stage = document.getElementById('stage');
+    const exportBtn = document.getElementById('exportBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const previewCard = document.getElementById('previewCard');
+    const previewTable = document.getElementById('previewTable');
+    const journalCard = document.getElementById('journalCard');
+    const logEl = document.getElementById('log');
+    const sessionsChipContainer = document.getElementById('detectedSessions');
+    const optBestAbsolus = document.getElementById('optBestAbsolus');
+    const optJournal = document.getElementById('optJournal');
+    const topNInput = document.getElementById('topN');
+
+    const JOURNAL_TYPES = {
+      INFO: 'INFO',
+      WARN: 'WARN',
+      ERROR: 'ERROR',
+      MAP: 'MAP'
+    };
+
+    const sessionPatterns = [
+      { regex: /(essais?\s*libres?)\s*(\d*)/i, type: 'Essais', format: (base, idx) => `${capitalize(base)} ${idx || ''}`.trim() },
+      { regex: /(essais?)\s*(\d*)/i, type: 'Essais', format: (base, idx) => `${capitalize(base)} ${idx || ''}`.trim() },
+      { regex: /(qualif(?:ication)?s?)\s*(\d*)/i, type: 'Qualif', format: (base, idx) => `${capitalize(base)} ${idx || ''}`.trim() },
+      { regex: /(mq)\s*(\d*)/i, type: 'MQ', format: (base, idx) => `${base.toUpperCase()} ${idx || ''}`.trim() },
+      { regex: /(warm(?:’|'|)up)/i, type: 'Warmup', format: base => prettyWarmup(base) },
+      { regex: /(pré?finale|pre\s*finale|pre-finale)/i, type: 'Prefinale', format: () => 'Préfinale' },
+      { regex: /(finale)/i, type: 'Finale', format: () => 'Finale' }
+    ];
+
+    const columnSynonyms = {
+      pilot: ['pilote', 'driver', 'name', 'surname', 'family name', 'pilot name'],
+      number: ['no.', 'n°', 'no', 'numero', 'number', 'kart', 'bib', 'kart #', 'kart n°'],
+      position: ['position', 'pos', 'rank', 'rnk', 'classement'],
+      time: ['temps', 'time', 'best', 'best lap', 'chrono', 'lap time'],
+      laps: ['tours', 'laps', 'total laps', 'nb tours']
+    };
+
+    const state = {
+      files: [],
+      sessions: [],
+      drivers: new Map(),
+      journal: [],
+      aggregatedRows: [],
+      bestTimes: [],
+      finalRanking: [],
+      bestAbsolus: []
+    };
+
+    fileBtn.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', event => handleFiles(event.target.files));
+
+    dropZone.addEventListener('dragover', event => {
+      event.preventDefault();
+      dropZone.classList.add('dragover');
+    });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', event => {
+      event.preventDefault();
+      dropZone.classList.remove('dragover');
+      if (event.dataTransfer?.files?.length) {
+        handleFiles(event.dataTransfer.files);
+      }
+    });
+
+    resetBtn.addEventListener('click', resetApp);
+    exportBtn.addEventListener('click', exportToExcel);
+
+    function resetApp() {
+      state.files = [];
+      state.sessions = [];
+      state.drivers = new Map();
+      state.journal = [];
+      state.aggregatedRows = [];
+      state.bestTimes = [];
+      state.finalRanking = [];
+      state.bestAbsolus = [];
+      previewTable.innerHTML = '';
+      previewCard.style.display = 'none';
+      journalCard.style.display = 'none';
+      logEl.textContent = '';
+      logEl.classList.remove('visible');
+      sessionsChipContainer.innerHTML = '';
+      progress.value = 0;
+      stage.textContent = 'En attente de fichiers…';
+      exportBtn.disabled = true;
+    }
+
+    async function handleFiles(fileList) {
+      const files = Array.from(fileList || []).slice(0, 10);
+      if (!files.length) return;
+      resetApp();
+      state.files = files;
+      stage.textContent = 'Lecture des fichiers…';
+      spinner.classList.add('visible');
+      progress.value = 5;
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        try {
+          await parseFile(file);
+          progress.value = 5 + Math.round(((i + 1) / files.length) * 45);
+        } catch (error) {
+          log(JOURNAL_TYPES.ERROR, `Lecture impossible`, `${file.name}: ${error.message}`);
+        }
+      }
+
+      if (!state.sessions.length) {
+        spinner.classList.remove('visible');
+        stage.textContent = 'Aucune session détectée.';
+        return;
+      }
+
+      stage.textContent = 'Analyse des données…';
+      await analyzeSessions();
+      progress.value = 75;
+
+      stage.textContent = 'Préparation de l’export…';
+      buildPreview();
+      progress.value = 90;
+
+      spinner.classList.remove('visible');
+      stage.textContent = 'Prêt pour l’export.';
+      progress.value = 100;
+      exportBtn.disabled = false;
+
+      if (optJournal.checked) {
+        journalCard.style.display = 'block';
+        logEl.classList.add('visible');
+        renderJournal();
+      }
+
+      updateSessionChips();
+    }
+
+    function updateSessionChips() {
+      sessionsChipContainer.innerHTML = '';
+      state.sessions.forEach(session => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = `${session.name} (${session.type})`;
+        sessionsChipContainer.appendChild(chip);
+      });
+    }
+
+    function log(type, message, detail = '') {
+      state.journal.push({ type, message, detail, timestamp: new Date().toISOString() });
+    }
+
+    async function parseFile(file) {
+      const ext = file.name.toLowerCase().split('.').pop();
+      if (['xlsx', 'xls', 'xlsm', 'xlsb'].includes(ext)) {
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: 'array' });
+        workbook.SheetNames.forEach(sheetName => {
+          const sheet = workbook.Sheets[sheetName];
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, blankrows: false });
+          if (!rows.length) return;
+          processTable(rows, file.name, sheetName);
+        });
+      } else if (ext === 'html' || ext === 'htm') {
+        const text = await file.text();
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        const tables = Array.from(doc.querySelectorAll('table'));
+        if (!tables.length) {
+          log(JOURNAL_TYPES.WARN, 'Aucun tableau trouvé', file.name);
+          return;
+        }
+        tables.forEach((table, idx) => {
+          const rows = Array.from(table.rows).map(row => Array.from(row.cells).map(cell => cell.textContent.trim()));
+          processTable(rows, file.name, table.getAttribute('summary') || `Table ${idx + 1}`);
+        });
+      } else {
+        log(JOURNAL_TYPES.WARN, 'Format non supporté', file.name);
+      }
+    }
+
+    function processTable(rows, fileName, sourceName) {
+      const headers = extractHeader(rows);
+      if (!headers) {
+        log(JOURNAL_TYPES.WARN, 'En-têtes introuvables', `${fileName} / ${sourceName}`);
+        return;
+      }
+      const mapping = mapColumns(headers.row);
+      if (!mapping.pilot && !mapping.number) {
+        log(JOURNAL_TYPES.ERROR, 'Colonnes pilotes ou numéros absentes', `${fileName} / ${sourceName}`);
+        return;
+      }
+      const sessionInfo = detectSession(`${fileName} ${sourceName}`);
+      const dataRows = [];
+      for (let i = headers.start + 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.every(cell => !String(cell || '').trim())) continue;
+        const pilot = getCell(row, mapping.pilot);
+        const number = getCell(row, mapping.number);
+        if (!pilot && !number) continue;
+        const position = parsePosition(getCell(row, mapping.position));
+        const time = parseTimeToMs(getCell(row, mapping.time));
+        const laps = parseLaps(getCell(row, mapping.laps));
+        dataRows.push({
+          pilot,
+          number,
+          position,
+          timeMs: time,
+          laps,
+          rawTime: getCell(row, mapping.time)
+        });
+      }
+      if (!dataRows.length) {
+        log(JOURNAL_TYPES.WARN, 'Aucune donnée exploitable', `${fileName} / ${sourceName}`);
+        return;
+      }
+      const bestTime = dataRows.reduce((min, row) => (row.timeMs != null && row.timeMs < min ? row.timeMs : min), Infinity);
+      const session = {
+        name: sessionInfo.name,
+        type: sessionInfo.type,
+        order: sessionInfo.order,
+        source: `${fileName} / ${sourceName}`,
+        mapping,
+        rows: dataRows.map(row => ({
+          ...row,
+          gapMs: row.timeMs != null && isFinite(bestTime) ? row.timeMs - bestTime : null
+        })),
+        bestTimeMs: isFinite(bestTime) ? bestTime : null
+      };
+      state.sessions.push(session);
+      log(JOURNAL_TYPES.INFO, `Session détectée: ${session.name}`, session.source);
+      if (mapping.unmapped.length) {
+        log(JOURNAL_TYPES.MAP, `Colonnes non mappées (${session.name})`, mapping.unmapped.join(', '));
+      }
+    }
+
+    function extractHeader(rows) {
+      for (let i = 0; i < Math.min(rows.length, 10); i++) {
+        const row = rows[i];
+        if (!row) continue;
+        const nonEmpty = row.filter(cell => String(cell || '').trim()).length;
+        if (nonEmpty >= 2) {
+          const normalized = row.map(cell => String(cell || '').trim());
+          return { row: normalized, start: i };
+        }
+      }
+      return null;
+    }
+
+    function mapColumns(headers) {
+      const mapping = { unmapped: [] };
+      headers.forEach((header, idx) => {
+        const normalized = header.toLowerCase().replace(/[:#]/g, '').trim();
+        let found = false;
+        for (const key of Object.keys(columnSynonyms)) {
+          if (columnSynonyms[key].some(term => normalized.includes(term))) {
+            mapping[key] = idx;
+            found = true;
+            log(JOURNAL_TYPES.MAP, `Colonne ${header} ➜ ${key}`, `index ${idx}`);
+            break;
+          }
+        }
+        if (!found) {
+          mapping.unmapped.push(header);
+        }
+      });
+      return mapping;
+    }
+
+    function getCell(row, index) {
+      if (index == null) return '';
+      const value = row[index];
+      return value != null ? String(value).trim() : '';
+    }
+
+    function parsePosition(value) {
+      if (!value) return null;
+      const num = parseInt(value, 10);
+      return Number.isFinite(num) ? num : null;
+    }
+
+    function parseLaps(value) {
+      if (!value) return null;
+      const normalized = value.replace(',', '.');
+      const num = parseFloat(normalized);
+      return Number.isFinite(num) ? num : null;
+    }
+
+    function parseTimeToMs(value) {
+      if (!value) return null;
+      if (typeof value === 'number') {
+        return Math.round(value * 1000);
+      }
+      const normalized = value
+        .toString()
+        .trim()
+        .toLowerCase()
+        .replace(/[’']/g, "'")
+        .replace(',', '.')
+        .replace(/[^0-9:.]/g, ':')
+        .replace(/::+/g, ':');
+      if (!normalized) return null;
+      const segments = normalized.split(':').map(seg => seg.trim()).filter(Boolean);
+      if (!segments.length) return null;
+      let minutes = 0;
+      let seconds = 0;
+      let millis = 0;
+      if (segments.length === 1) {
+        const secParts = segments[0].split('.');
+        seconds = parseInt(secParts[0], 10) || 0;
+        millis = parseMillis(secParts[1]);
+      } else if (segments.length === 2) {
+        minutes = parseInt(segments[0], 10) || 0;
+        const secParts = segments[1].split('.');
+        seconds = parseInt(secParts[0], 10) || 0;
+        millis = parseMillis(secParts[1]);
+      } else if (segments.length >= 3) {
+        minutes = parseInt(segments[segments.length - 3], 10) || 0;
+        seconds = parseInt(segments[segments.length - 2], 10) || 0;
+        millis = parseMillis(segments[segments.length - 1]);
+      }
+      const totalMs = (minutes * 60 + seconds) * 1000 + millis;
+      return Number.isFinite(totalMs) ? totalMs : null;
+    }
+
+    function parseMillis(value) {
+      if (!value) return 0;
+      const str = value.padEnd(3, '0').slice(0, 3);
+      const num = parseInt(str, 10);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function formatMs(ms) {
+      if (ms == null || !Number.isFinite(ms)) return '';
+      const totalSeconds = Math.floor(ms / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      const millis = ms % 1000;
+      return `${minutes}:${seconds.toString().padStart(2, '0')}.${millis.toString().padStart(3, '0')}`;
+    }
+
+    function detectSession(text) {
+      const normalized = text.toLowerCase();
+      for (const pattern of sessionPatterns) {
+        const match = normalized.match(pattern.regex);
+        if (match) {
+          const base = match[1];
+          const idx = match[2];
+          const name = pattern.format(base, idx);
+          const order = orderForType(pattern.type, idx);
+          return { name, type: pattern.type, order };
+        }
+      }
+      const fallbackName = `Session ${state.sessions.length + 1}`;
+      return { name: fallbackName, type: 'Autre', order: 100 + state.sessions.length };
+    }
+
+    function orderForType(type, index) {
+      const idx = parseInt(index, 10) || 0;
+      const baseOrders = {
+        Warmup: 5,
+        Essais: 10,
+        Qualif: 20,
+        MQ: 30,
+        Prefinale: 40,
+        Finale: 50,
+        Autre: 60
+      };
+      return baseOrders[type] + idx / 100;
+    }
+
+    function capitalize(text) {
+      return text ? text.charAt(0).toUpperCase() + text.slice(1).toLowerCase() : '';
+    }
+
+    function prettyWarmup(base) {
+      const normalized = base.replace(/['’]/g, "'");
+      return normalized.toLowerCase().includes('warm') ? "Warm'up" : 'Warm-up';
+    }
+
+    async function analyzeSessions() {
+      state.drivers = new Map();
+      const sortedSessions = [...state.sessions].sort((a, b) => a.order - b.order);
+      state.sessions = sortedSessions;
+      for (const session of sortedSessions) {
+        session.rows.forEach(row => {
+          const key = buildDriverKey(row);
+          if (!state.drivers.has(key)) {
+            state.drivers.set(key, {
+              pilot: row.pilot || `#${row.number || '?'}`,
+              number: row.number || '',
+              sessions: {},
+              bestTime: Infinity
+            });
+          }
+          const driver = state.drivers.get(key);
+          driver.sessions[session.name] = {
+            position: row.position,
+            timeMs: row.timeMs,
+            gapMs: row.gapMs,
+            laps: row.laps
+          };
+          if (row.timeMs != null && row.timeMs < driver.bestTime) {
+            driver.bestTime = row.timeMs;
+          }
+        });
+      }
+
+      const aggregated = [];
+      for (const driver of state.drivers.values()) {
+        aggregated.push(driver);
+      }
+      aggregated.sort((a, b) => (a.pilot || '').localeCompare(b.pilot || ''));
+      state.aggregatedRows = aggregated;
+
+      computeBestTimes(sortedSessions);
+      computeFinalRanking(sortedSessions);
+      computeBestAbsolus(sortedSessions);
+    }
+
+    function buildDriverKey(row) {
+      const name = (row.pilot || '').toUpperCase().normalize('NFD').replace(/[^A-Z0-9]/g, '');
+      const number = row.number ? String(row.number).padStart(3, '0') : '000';
+      return `${number}-${name}`;
+    }
+
+    function computeBestTimes(sessions) {
+      const bestTimes = [];
+      sessions.forEach(session => {
+        if (!session.bestTimeMs || !Number.isFinite(session.bestTimeMs)) return;
+        const bestRow = session.rows.find(row => row.timeMs === session.bestTimeMs);
+        if (!bestRow) return;
+        bestTimes.push({
+          session: session.name,
+          pilot: bestRow.pilot || `#${bestRow.number || '?'}`,
+          timeMs: session.bestTimeMs,
+          type: session.type
+        });
+      });
+      state.bestTimes = bestTimes;
+    }
+
+    function computeFinalRanking(sessions) {
+      let finalSession = sessions.find(session => session.type === 'Finale');
+      if (!finalSession) {
+        finalSession = [...sessions].reverse().find(session => session.rows.some(row => row.position != null));
+      }
+      if (!finalSession) {
+        state.finalRanking = [];
+        log(JOURNAL_TYPES.WARN, 'Classement final indisponible', 'Aucune session avec positions.');
+        return;
+      }
+      const ranking = finalSession.rows
+        .filter(row => row.position != null)
+        .sort((a, b) => a.position - b.position)
+        .map(row => ({
+          position: row.position,
+          pilot: row.pilot || `#${row.number || '?'}`,
+          timeMs: row.timeMs,
+          gapMs: row.gapMs,
+          session: finalSession.name
+        }));
+      state.finalRanking = ranking;
+      log(JOURNAL_TYPES.INFO, `Classement final basé sur ${finalSession.name}`, finalSession.source);
+    }
+
+    function computeBestAbsolus(sessions) {
+      if (!optBestAbsolus.checked) {
+        state.bestAbsolus = [];
+        return;
+      }
+      const topN = Math.min(Math.max(parseInt(topNInput.value, 10) || 10, 3), 50);
+      const times = [];
+      sessions.forEach(session => {
+        session.rows.forEach(row => {
+          if (row.timeMs != null) {
+            times.push({
+              pilot: row.pilot || `#${row.number || '?'}`,
+              session: session.name,
+              type: session.type,
+              timeMs: row.timeMs
+            });
+          }
+        });
+      });
+      times.sort((a, b) => a.timeMs - b.timeMs);
+      const bestTime = times.length ? times[0].timeMs : null;
+      state.bestAbsolus = times.slice(0, topN).map((item, index) => ({
+        rank: index + 1,
+        pilot: item.pilot,
+        session: item.session,
+        timeMs: item.timeMs,
+        gapMs: bestTime != null ? item.timeMs - bestTime : null
+      }));
+    }
+
+    function buildPreview() {
+      const sessions = state.sessions.map(session => session.name);
+      const header = ['Pilote', 'Numéro'];
+      sessions.forEach(name => {
+        header.push(`${name}_Position`, `${name}_Temps`, `${name}_Écart`);
+      });
+      const body = [];
+      state.aggregatedRows.forEach(driver => {
+        const row = [driver.pilot, driver.number];
+        sessions.forEach(name => {
+          const sess = driver.sessions[name];
+          if (sess) {
+            row.push(sess.position ?? '');
+            row.push(formatMs(sess.timeMs));
+            row.push(sess.gapMs != null ? formatMs(sess.gapMs) : '');
+          } else {
+            row.push('', '', '');
+          }
+        });
+        body.push(row);
+      });
+      renderTable(header, body.slice(0, 100));
+    }
+
+    function renderTable(header, rows) {
+      previewCard.style.display = 'block';
+      const thead = `<thead><tr>${header.map(col => `<th>${col}</th>`).join('')}</tr></thead>`;
+      const tbody = `<tbody>${rows.map(row => `<tr>${row.map(cell => `<td>${cell ?? ''}</td>`).join('')}</tr>`).join('')}</tbody>`;
+      previewTable.innerHTML = thead + tbody;
+    }
+
+    function renderJournal() {
+      logEl.textContent = state.journal
+        .map(entry => `[${entry.timestamp}] [${entry.type}] ${entry.message}${entry.detail ? ` → ${entry.detail}` : ''}`)
+        .join('\n');
+    }
+
+    async function exportToExcel() {
+      try {
+        stage.textContent = 'Génération du classeur…';
+        spinner.classList.add('visible');
+        const workbook = new ExcelJS.Workbook();
+        workbook.created = new Date();
+        const sessions = state.sessions.map(session => session.name);
+        createSheetResultatsComplets(workbook, sessions);
+        createSheetMeilleursTemps(workbook);
+        createSheetClassementFinal(workbook);
+        if (optBestAbsolus.checked && state.bestAbsolus.length) {
+          createSheetBestAbsolus(workbook);
+        }
+        if (optJournal.checked && state.journal.length) {
+          createSheetJournal(workbook);
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const timestamp = new Date();
+        const fileName = `Analyse_Meeting_${timestamp.toISOString().replace(/[-:T]/g, '').slice(0, 12)}.xlsx`;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        stage.textContent = 'Export terminé ✅';
+      } catch (error) {
+        log(JOURNAL_TYPES.ERROR, 'Export échoué', error.message);
+        stage.textContent = 'Erreur lors de l’export.';
+      } finally {
+        spinner.classList.remove('visible');
+        if (optJournal.checked) {
+          renderJournal();
+        }
+      }
+    }
+
+    function createSheetResultatsComplets(workbook, sessions) {
+      const sheet = workbook.addWorksheet('Résultats Complets', { views: [{ state: 'frozen', ySplit: 1 }] });
+      const header = ['Pilote', 'Numéro'];
+      sessions.forEach(name => {
+        header.push(`${name}_Position`, `${name}_Temps`, `${name}_Écart`);
+      });
+      sheet.addRow(header);
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+      sheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+      state.aggregatedRows.forEach(driver => {
+        const row = [driver.pilot, driver.number];
+        sessions.forEach(name => {
+          const sess = driver.sessions[name];
+          if (sess) {
+            row.push(sess.position ?? null);
+            row.push(sess.timeMs != null ? msToExcelTime(sess.timeMs) : null);
+            row.push(sess.gapMs != null ? msToExcelTime(sess.gapMs) : null);
+          } else {
+            row.push(null, null, null);
+          }
+        });
+        sheet.addRow(row);
+      });
+
+      applyColumnFormatting(sheet);
+      applyGapShading(sheet);
+    }
+
+    function applyColumnFormatting(sheet) {
+      sheet.columns.forEach(column => {
+        const header = column.header || '';
+        column.width = Math.max(12, header.length + 4);
+        if (String(header).toLowerCase().includes('_temps') || String(header).toLowerCase().includes('_écart') || ['Temps', 'Écart'].includes(header)) {
+          column.numFmt = 'mm:ss.000';
+        }
+      });
+    }
+
+    function applyGapShading(sheet) {
+      const headerRow = sheet.getRow(1);
+      headerRow.eachCell((cell, colNumber) => {
+        const header = (cell.value || '').toString().toLowerCase();
+        if (header.endsWith('_écart')) {
+          const values = [];
+          for (let r = 2; r <= sheet.rowCount; r++) {
+            const cellValue = sheet.getRow(r).getCell(colNumber).value;
+            if (cellValue && typeof cellValue === 'number') {
+              values.push(cellValue);
+            }
+          }
+          if (!values.length) return;
+          const maxGap = Math.max(...values);
+          for (let r = 2; r <= sheet.rowCount; r++) {
+            const cellRef = sheet.getRow(r).getCell(colNumber);
+            if (typeof cellRef.value === 'number' && maxGap > 0) {
+              const ratio = cellRef.value / maxGap;
+              const intensity = Math.min(255, 230 + Math.round(25 * ratio));
+              cellRef.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: `FF${intensity.toString(16).padStart(2, '0')}F5F5` }
+              };
+            }
+          }
+        }
+      });
+    }
+
+    function createSheetMeilleursTemps(workbook) {
+      const sheet = workbook.addWorksheet('Meilleurs Temps', { views: [{ state: 'frozen', ySplit: 1 }] });
+      const header = ['Session', 'Pilote', 'Meilleur_Temps', 'Type'];
+      sheet.addRow(header);
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+
+      state.bestTimes.forEach(entry => {
+        sheet.addRow([
+          entry.session,
+          entry.pilot,
+          entry.timeMs != null ? msToExcelTime(entry.timeMs) : null,
+          entry.type
+        ]);
+      });
+
+      sheet.columns.forEach((column, index) => {
+        column.width = Math.max(12, String(column.header || '').length + 4);
+        if (index === 2) {
+          column.numFmt = 'mm:ss.000';
+        }
+      });
+    }
+
+    function createSheetClassementFinal(workbook) {
+      const sheet = workbook.addWorksheet('Classement Final', { views: [{ state: 'frozen', ySplit: 1 }] });
+      const header = ['Position', 'Pilote', 'Temps', 'Écart'];
+      sheet.addRow(header);
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+
+      state.finalRanking.forEach(entry => {
+        sheet.addRow([
+          entry.position,
+          entry.pilot,
+          entry.timeMs != null ? msToExcelTime(entry.timeMs) : null,
+          entry.gapMs != null ? msToExcelTime(entry.gapMs) : null
+        ]);
+      });
+
+      sheet.columns.forEach((column, index) => {
+        column.width = Math.max(12, String(column.header || '').length + 4);
+        if (index >= 2) {
+          column.numFmt = 'mm:ss.000';
+        }
+      });
+
+      // Podium colors
+      const colors = ['FFFCD34D', 'FFE5E7EB', 'FFFB923C'];
+      for (let i = 0; i < Math.min(3, sheet.rowCount - 1); i++) {
+        const row = sheet.getRow(2 + i);
+        row.eachCell(cell => {
+          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: colors[i] } };
+        });
+      }
+    }
+
+    function createSheetBestAbsolus(workbook) {
+      const sheet = workbook.addWorksheet('Best_Absolus', { views: [{ state: 'frozen', ySplit: 1 }] });
+      const header = ['Rang', 'Pilote', 'Session', 'Temps', 'Écart_absolu'];
+      sheet.addRow(header);
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+
+      state.bestAbsolus.forEach(entry => {
+        sheet.addRow([
+          entry.rank,
+          entry.pilot,
+          entry.session,
+          entry.timeMs != null ? msToExcelTime(entry.timeMs) : null,
+          entry.gapMs != null ? msToExcelTime(entry.gapMs) : null
+        ]);
+      });
+
+      sheet.columns.forEach((column, index) => {
+        column.width = Math.max(12, String(column.header || '').length + 4);
+        if (index >= 3) {
+          column.numFmt = 'mm:ss.000';
+        }
+      });
+    }
+
+    function createSheetJournal(workbook) {
+      const sheet = workbook.addWorksheet('Journal', { views: [{ state: 'frozen', ySplit: 1 }] });
+      const header = ['Horodatage', 'Type', 'Message', 'Détail'];
+      sheet.addRow(header);
+      sheet.getRow(1).font = { bold: true };
+      sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE5E7EB' } };
+
+      state.journal.forEach(entry => {
+        sheet.addRow([entry.timestamp, entry.type, entry.message, entry.detail]);
+      });
+
+      sheet.columns.forEach(column => {
+        column.width = Math.max(16, String(column.header || '').length + 6);
+      });
+    }
+
+    function msToExcelTime(ms) {
+      return ms / 1000 / 60 / 60 / 24;
+    }
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        const swCode = `const CACHE_NAME = 'analyse-meeting-cache-v1';
+          const ASSETS = [self.location.href, 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js'];
+          self.addEventListener('install', event => {
+            event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+          });
+          self.addEventListener('activate', event => {
+            event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))));
+          });
+          self.addEventListener('fetch', event => {
+            event.respondWith(caches.match(event.request).then(response => response || fetch(event.request)));
+          });`;
+        const blob = new Blob([swCode], { type: 'text/javascript' });
+        const url = URL.createObjectURL(blob);
+        navigator.serviceWorker.register(url).catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
