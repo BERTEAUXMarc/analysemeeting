@@ -1,0 +1,8 @@
+{
+  "manette_gauche": {"mode": "button", "joystick_id": 0, "control": 0, "threshold": 0.5, "keyboard_key": null},
+  "manette_droite": {"mode": "button", "joystick_id": 1, "control": 0, "threshold": 0.5, "keyboard_key": null},
+  "pedale_gauche": {"mode": "axis", "joystick_id": 2, "control": 1, "threshold": 0.6, "keyboard_key": null},
+  "pedale_droite": {"mode": "axis", "joystick_id": 2, "control": 2, "threshold": 0.6, "keyboard_key": null},
+  "debug_keyboard_mode": true,
+  "neutral_interval_seconds": 0.0
+}

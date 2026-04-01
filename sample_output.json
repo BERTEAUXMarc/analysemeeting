@@ -1,0 +1,10 @@
+{
+  "candidate": {"nom": "Doe", "prenom": "Jane", "date_naissance": "1992-05-21", "age": 33},
+  "test_datetime": "2026-04-01T10:22:00",
+  "protocol_version": "1.0.0",
+  "validation_trial": {"attempts": 2, "final_error_pct": 40.0, "validated": true},
+  "main_test_params": {"total_signals": 108, "actual_duration_s": 151.2},
+  "metrics": {
+    "global": {"nb_signaux": 108, "performance_pct": 75.0, "br": 81, "er": 17, "om": 10, "mean_ms": 620.2, "median_ms": 590.0, "std_ms": 130.5}
+  }
+}
